@@ -27,11 +27,50 @@ function Player.new(x, y)
 	stunTimer = 0,
 	m1Timer = 0,        -- Cooldown de 0.3s
 	m1Combo = 0,        -- En qué golpe del combo vamos (0 a 3)
-	m1ComboReset = 0   -- Tiempo para perder el combo si dejas de atacar
+	m1ComboReset = 0,   -- Tiempo para perder el combo si dejas de atacar
+	
+	attackAnimTimer = 0,
+        visualRotation = 0,
+        queuedAttack = nil, -- Aquí guardaremos el ataque hasta que termine el windup
+	
+	kx = 0, -- Fuerza de empuje en X
+        ky = 0 -- Fuerza de empuje en Y
     }, Player)
 end
 
 function Player:update(dt, entityManager)
+    -- Lógica de Animación y Windup del M1
+    if (self.attackAnimTimer or 0) > 0 then
+        self.attackAnimTimer = self.attackAnimTimer - dt
+        
+        if self.attackAnimTimer > 0.05 then
+            -- Primeros 0.1s: Windup (Giro 30° a la izquierda)
+            self.visualRotation = -math.rad(30)
+        else
+            -- Últimos 0.05s: Deslizamiento (Giro 35° a la derecha)
+            self.visualRotation = math.rad(35)
+        end
+        
+        -- Exactamente a los 0.15s (cuando el timer llega a 0), creamos la hitbox
+        if self.attackAnimTimer <= 0 and self.queuedAttack then
+            entityManager:add(self.queuedAttack)
+            self.queuedAttack = nil
+        end
+    else
+        -- Si ya no está atacando (su cooldown M1 terminó), regresa a su pose normal
+        if (self.m1Timer or 0) <= 0 then
+            self.visualRotation = 0
+        end
+    end
+
+   -- Aplicar la fuerza de empuje (Knockback)
+    self.x = self.x + self.kx * dt
+    self.y = self.y + self.ky * dt
+    
+    -- Fricción: reduce la fuerza rápidamente para que no resbalen como en hielo
+    self.kx = self.kx * 0.85
+    self.ky = self.ky * 0.85
+
     if self.stunTimer > 0 then
         self.stunTimer = self.stunTimer - dt
         self.isBlocking = false -- Si te stunean, rompen tu guardia
@@ -125,7 +164,9 @@ function Player:m1(mouseX, mouseY)
         color = attackColor
     })
 
-    self.entityManager:add(attackInstance)
+    -- En vez de spawnearlo inmediatamente, lo encolamos
+    self.queuedAttack = attackInstance
+    self.attackAnimTimer = 0.15 -- 0.15s de animación antes del impacto
 
     -- Aplicamos los timers usando nuestra variable calculada
     self.m1Timer = duration 
@@ -146,13 +187,29 @@ function Player:getAuraCircle()
 end
 
 function Player:draw()
-    self.will:drawAura(self)
+    if self.will and self.will.drawAura then
+        self.will:drawAura(self)
+    end
 
+    love.graphics.push()
+    
+    -- 1. Movemos la "cámara matemática" al centro exacto del jugador
+    local centerX = self.x + self.width / 2
+    local centerY = self.y + self.height / 2
+    love.graphics.translate(centerX, centerY)
+    
+    -- 2. Rotamos el eje
+    love.graphics.rotate(self.visualRotation or 0)
+    
+    -- 3. Dibujamos el rectángulo (como el centro ya está desplazado, 
+    -- lo dibujamos desde -mitad_ancho y -mitad_alto)
     love.graphics.setColor(self.color)
-    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, 6, 6)
-
+    love.graphics.rectangle("fill", -self.width/2, -self.height/2, self.width, self.height, 6, 6)
+    
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height, 6, 6)
+    love.graphics.rectangle("line", -self.width/2, -self.height/2, self.width, self.height, 6, 6)
+    
+    love.graphics.pop() -- Restauramos la cámara
 end
 
 return Player
