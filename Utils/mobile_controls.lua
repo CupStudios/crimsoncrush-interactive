@@ -1,4 +1,6 @@
 -- Utils/mobile_controls.lua
+local VirtualScreen = require("Core.virtual_screen")
+
 local MobileControls = {
     joystick = { x = 250, y = 900, radius = 150, active = false, touchId = nil, dx = 0, dy = 0 },
     buttons = {

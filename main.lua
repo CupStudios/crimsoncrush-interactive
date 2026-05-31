@@ -109,6 +109,21 @@ end
 function love.update(dt)
     entityManager:update(dt)
     camera:follow(player, dt)
+    
+    -- M1 Táctil: Si presionan el botón M1, llamamos al ataque
+    -- Nota: Usamos MobileControls:isActionPressed("m1")
+    if MobileControls:isActionPressed("m1") then
+        -- Disparamos hacia donde apunta el joystick (o una dirección por defecto)
+        local jx, jy = MobileControls:getJoystickVector()
+        local targetX = player.x + (jx * 200)
+        local targetY = player.y + (jy * 200)
+        player:m1(targetX, targetY)
+    end
+
+    -- Will Táctil: Si presionan el botón Will
+    if MobileControls:isActionPressed("will") then
+        player:useWillAbility(entityManager)
+    end
 end
 
 function love.keypressed(key)
@@ -124,14 +139,13 @@ function love.keypressed(key)
 end
 
 function love.mousepressed(x, y, button)
-    if button == 1 then -- 1 es el Click Izquierdo
-        -- 1. Obtenemos el mouse en resolución virtual (1600x1200)
+    -- Si es móvil o estamos usando controles táctiles, ignoramos el mouse
+    -- para evitar el doble registro.
+    if love.system.getOS() == "Android" or love.system.getOS() == "iOS" then return end
+    
+    if button == 1 then
         local virtualMouseX, virtualMouseY = VirtualScreen:getMousePosition()
-        
-        -- 2. Lo pasamos por la cámara para saber en qué parte del mapa está
         local worldMouseX, worldMouseY = camera:getWorldCoords(virtualMouseX, virtualMouseY)
-        
-        -- 3. Le decimos al jugador que ataque hacia ese punto exacto del mapa
         player:m1(worldMouseX, worldMouseY)
     end
 end
