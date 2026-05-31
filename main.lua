@@ -4,6 +4,12 @@ local EntityManager = require("Entities.entity_manager")
 local Player = require("Entities.player")
 local TrainingDummy = require("Entities.training_dummy")
 
+local MobileControls = require("Utils.mobile_controls")
+
+function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
+function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
+function love.touchreleased(id, x, y) MobileControls:touchreleased(id) end
+
 local camera
 local entityManager
 local player
@@ -152,6 +158,8 @@ function love.draw()
 
     -- 4) UI virtual encima del mundo, sin cámara pero manteniendo escala 12:9.
     drawVirtualUi()
+    
+    MobileControls:draw() -- Dibujar controles encima de todo
 
     -- 5) Sale del sistema virtual y restaura coordenadas físicas de Löve2D.
     VirtualScreen:release()
