@@ -240,22 +240,32 @@ function Will:tryActivate(player, entityManager)
     return true
 end
 
+function Will:getAuraRadius(player)
+    local chargeRatio = self.output_maximo > 0 and (self.output_actual / self.output_maximo) or 0
+    local pulse = 6 * math.sin(love.timer.getTime() * 12)
+    return math.max(player.width, player.height) * 0.9 + chargeRatio * 42 + pulse
+end
+
+function Will:getAuraCircle(player)
+    return {
+        x = player.x + player.width / 2,
+        y = player.y + player.height / 2,
+        radius = self:getAuraRadius(player)
+    }
+end
+
 function Will:drawAura(player)
     if not self.isChanneling then
         return
     end
 
-    local chargeRatio = self.output_maximo > 0 and (self.output_actual / self.output_maximo) or 0
-    local pulse = 6 * math.sin(love.timer.getTime() * 12)
-    local radius = math.max(player.width, player.height) * 0.9 + chargeRatio * 42 + pulse
-    local centerX = player.x + player.width / 2
-    local centerY = player.y + player.height / 2
+    local aura = self:getAuraCircle(player)
 
     love.graphics.setColor(self.color[1], self.color[2], self.color[3], 0.24)
-    love.graphics.circle("fill", centerX, centerY, radius)
+    love.graphics.circle("fill", aura.x, aura.y, aura.radius)
 
     love.graphics.setColor(self.color[1], self.color[2], self.color[3], 0.88)
-    love.graphics.circle("line", centerX, centerY, radius)
+    love.graphics.circle("line", aura.x, aura.y, aura.radius)
 end
 
 function WillFactory.generate()

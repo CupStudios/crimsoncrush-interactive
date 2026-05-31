@@ -1,14 +1,14 @@
 -- Core/virtual_screen.lua
--- Gestiona una resolución lógica fija de 1200x900 y calcula letterboxing/pillarboxing
+-- Gestiona una resolución lógica fija de 1600x1200 y calcula letterboxing/pillarboxing
 -- para mantener SIEMPRE una proporción 12:9 sin importar el tamaño real de la ventana.
 local VirtualScreen = {
-    width = 1200,
-    height = 900,
+    width = 1600,
+    height = 1200,
     scale = 1,
     offsetX = 0,
     offsetY = 0,
-    windowWidth = 1200,
-    windowHeight = 900
+    windowWidth = 1600,
+    windowHeight = 1200
 }
 
 function VirtualScreen:update(windowWidth, windowHeight)
@@ -27,7 +27,7 @@ end
 
 function VirtualScreen:apply()
     -- A partir de aquí, cualquier draw se expresa en coordenadas virtuales
-    -- 1200x900. La conversión a píxeles reales ocurre con translate + scale:
+    -- 1600x1200. La conversión a píxeles reales ocurre con translate + scale:
     -- pantalla_real = (coordenada_virtual * scale) + offset(letterbox/pillarbox).
     love.graphics.push()
     love.graphics.translate(self.offsetX, self.offsetY)

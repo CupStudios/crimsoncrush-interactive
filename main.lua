@@ -10,11 +10,11 @@ local player
 
 local function drawWorldGrid()
     love.graphics.setColor(0.16, 0.16, 0.18, 1)
-    for x = -2400, 2400, 100 do
-        love.graphics.line(x, -1800, x, 1800)
+    for x = -3200, 3200, 100 do
+        love.graphics.line(x, -2400, x, 2400)
     end
-    for y = -1800, 1800, 100 do
-        love.graphics.line(-2400, y, 2400, y)
+    for y = -2400, 2400, 100 do
+        love.graphics.line(-3200, y, 3200, y)
     end
 end
 
@@ -42,17 +42,17 @@ local function drawBar(x, y, width, height, ratio, color, label)
 end
 
 local function drawVirtualUi()
-    -- La UI también vive en coordenadas virtuales 1200x900, no en píxeles físicos.
+    -- La UI también vive en coordenadas virtuales 1600x1200, no en píxeles físicos.
     local will = player.will
     local reserveRatio = will.reserva_actual / will.reserva_maxima
     local outputRatio = will.output_actual / will.output_maximo
     local cooldownRatio = will.active.cooldown > 0 and (1 - will.active.timer / will.active.cooldown) or 1
 
     love.graphics.setColor(0, 0, 0, 0.62)
-    love.graphics.rectangle("fill", 24, 24, 520, 218, 10, 10)
+    love.graphics.rectangle("fill", 24, 24, 560, 246, 10, 10)
 
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("Resolución virtual fija: 1200x900 (ratio 12:9)", 44, 44)
+    love.graphics.print("Resolución virtual fija: 1600x1200 (ratio 12:9)", 44, 44)
     love.graphics.print("Movimiento: WASD | Canalizar: E | Activar Will: Space/J", 44, 70)
     love.graphics.print(string.format("Jugador mundo: x=%.1f y=%.1f | HP: %.1f/%.1f", player.x, player.y, player.hp, player.maxHp), 44, 96)
     love.graphics.print(string.format("Will %s | Pasiva: %s | Activa: %s", will.archetype, will.passive.name, will.active.name), 44, 122)
@@ -60,6 +60,7 @@ local function drawVirtualUi()
     drawBar(44, 150, 460, 20, reserveRatio, {0.35, 0.55, 1, 1}, string.format("Reserva %.0f / %.0f", will.reserva_actual, will.reserva_maxima))
     drawBar(44, 178, 460, 20, outputRatio, {will.color[1], will.color[2], will.color[3], 1}, string.format("Output %.0f / %.0f | Coste %.0f", will.output_actual, will.output_maximo, will.active.energyCost))
     drawBar(44, 206, 460, 20, cooldownRatio, {0.95, 0.75, 0.25, 1}, string.format("Cooldown %.1fs", will.active.timer))
+    love.graphics.print(string.format("Will XP: %.0f | K: spawnear dummy", player.willExperience), 44, 234)
 
     if will.lastError then
         love.graphics.setColor(1, 0.35, 0.35, 1)
@@ -74,7 +75,7 @@ function love.load()
     love.math.setRandomSeed(os.time())
 
     love.window.setTitle("CrimsonCrush - Base top-down 12:9")
-    love.window.setMode(1200, 900, {
+    love.window.setMode(1600, 1200, {
         resizable = true,
         minwidth = 400,
         minheight = 300
@@ -104,6 +105,12 @@ end
 function love.keypressed(key)
     if key == "space" or key == "j" then
         player:useWillAbility(entityManager)
+    elseif key == "k" then
+        local angle = love.math.random() * math.pi * 2
+        local distance = love.math.random(180, 420)
+        local spawnX = player.x + math.cos(angle) * distance
+        local spawnY = player.y + math.sin(angle) * distance
+        entityManager:add(TrainingDummy.new(spawnX, spawnY))
     end
 end
 
@@ -112,7 +119,7 @@ function love.draw()
     -- escalada se verá como letterboxing/pillarboxing.
     VirtualScreen:drawBlackBars()
 
-    -- 2) Entra al sistema virtual: desde aquí se dibuja en coordenadas 1200x900.
+    -- 2) Entra al sistema virtual: desde aquí se dibuja en coordenadas 1600x1200.
     VirtualScreen:apply()
 
     -- Fondo del área de juego virtual; no usa coordenadas físicas de la ventana.

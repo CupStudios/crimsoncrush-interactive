@@ -16,6 +16,7 @@ function Player.new(x, y)
         speed = 280,
         hp = 100,
         maxHp = 100,
+        willExperience = 0,
         color = {0.9, 0.15, 0.12, 1},
         dirX = 0,
         dirY = 1,
@@ -60,6 +61,14 @@ end
 function Player:onDealDamage(target, damage)
     -- Hook preparado para robo de vida, buffs al golpear y futuras mecánicas de combate.
     self.will:onDamageDealt(self, target, damage)
+end
+
+function Player:getAuraCircle()
+    if not self.will.isChanneling then
+        return nil
+    end
+
+    return self.will:getAuraCircle(self)
 end
 
 function Player:draw()

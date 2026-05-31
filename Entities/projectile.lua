@@ -30,40 +30,14 @@ function Projectile.new(config)
     }, Projectile)
 end
 
-function Projectile:update(dt, entityManager)
+function Projectile:update(dt)
     self.age = self.age + dt
     self.x = self.x + self.directionX * self.speed * dt
     self.y = self.y + self.directionY * self.speed * dt
 
+    -- La colisión AABB contra enemigos se resuelve centralizadamente en EntityManager.
     if self.age >= self.lifetime then
         self.destroyed = true
-        return
-    end
-
-    -- Hook de daño preparado para enemigos/NPCs futuros con hp y receiveDamage.
-    for _, entity in ipairs(entityManager.entities) do
-        if entity ~= self and entity ~= self.owner and entity.hp and not entity.destroyed then
-            local overlaps = self.x < entity.x + entity.width
-                and self.x + self.width > entity.x
-                and self.y < entity.y + entity.height
-                and self.y + self.height > entity.y
-
-            if overlaps then
-                local damage = self.damage
-                if entity.receiveDamage then
-                    damage = entity:receiveDamage(damage, self.owner)
-                else
-                    entity.hp = entity.hp - damage
-                end
-
-                if self.owner and self.owner.onDealDamage then
-                    self.owner:onDealDamage(entity, damage)
-                end
-
-                self.destroyed = true
-                return
-            end
-        end
     end
 end
 

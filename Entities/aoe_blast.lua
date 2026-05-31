@@ -24,38 +24,10 @@ function AoeBlast.new(config)
     }, AoeBlast)
 end
 
-function AoeBlast:update(dt, entityManager)
+function AoeBlast:update(dt)
     self.age = self.age + dt
 
-    if not self.hasAppliedDamage then
-        self.hasAppliedDamage = true
-        local centerX = self.x + self.radius
-        local centerY = self.y + self.radius
-
-        -- Daño en lote: afectará a cualquier entidad futura con hp dentro del radio.
-        for _, entity in ipairs(entityManager.entities) do
-            if entity ~= self and entity ~= self.owner and entity.hp and not entity.destroyed then
-                local entityCenterX = entity.x + entity.width / 2
-                local entityCenterY = entity.y + entity.height / 2
-                local dx = entityCenterX - centerX
-                local dy = entityCenterY - centerY
-
-                if dx * dx + dy * dy <= self.radius * self.radius then
-                    local damage = self.damage
-                    if entity.receiveDamage then
-                        damage = entity:receiveDamage(damage, self.owner)
-                    else
-                        entity.hp = entity.hp - damage
-                    end
-
-                    if self.owner and self.owner.onDealDamage then
-                        self.owner:onDealDamage(entity, damage)
-                    end
-                end
-            end
-        end
-    end
-
+    -- El daño círculo-círculo se resuelve centralizadamente en EntityManager.
     if self.age >= self.lifetime then
         self.destroyed = true
     end
