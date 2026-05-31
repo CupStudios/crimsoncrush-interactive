@@ -34,17 +34,42 @@ function EntityManager:getById(id)
     return self.byId[id]
 end
 
-function EntityManager:update(dt)
+function EntityManager:getByType(entityType)
+    local matches = {}
+
     for _, entity in ipairs(self.entities) do
-        if entity.update then
-            entity:update(dt, self)
+        if entity.type == entityType and not entity.destroyed then
+            table.insert(matches, entity)
+        end
+    end
+
+    return matches
+end
+
+function EntityManager:removeDestroyed()
+    for index = #self.entities, 1, -1 do
+        local entity = self.entities[index]
+
+        if entity.destroyed then
+            self.byId[entity.id] = nil
+            table.remove(self.entities, index)
         end
     end
 end
 
+function EntityManager:update(dt)
+    for _, entity in ipairs(self.entities) do
+        if not entity.destroyed and entity.update then
+            entity:update(dt, self)
+        end
+    end
+
+    self:removeDestroyed()
+end
+
 function EntityManager:draw()
     for _, entity in ipairs(self.entities) do
-        if entity.draw then
+        if not entity.destroyed and entity.draw then
             entity:draw()
         end
     end
