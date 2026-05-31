@@ -83,7 +83,7 @@ function love.load()
 
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    local uiFont = love.graphics.newFont(16) -- Puedes cambiar el 16 si la quieres más grande
+    local uiFont = love.graphics.newFont(19) -- Puedes cambiar el 16 si la quieres más grande
     uiFont:setFilter("linear", "linear")
     love.graphics.setFont(uiFont)
 
