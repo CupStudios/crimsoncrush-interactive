@@ -44,6 +44,10 @@ function Player.update(dt)
     end
 end
 
+function Player.m1()
+
+end
+
 function Player.usarHabilidad()
     local skill = Player.will.habilidad
     if skill.timer <= 0 then

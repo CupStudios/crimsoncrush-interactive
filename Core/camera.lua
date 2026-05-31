@@ -41,4 +41,9 @@ function Camera:release()
     love.graphics.pop()
 end
 
+function Camera:getWorldCoords(virtualX, virtualY)
+    -- Suma la posición actual de la cámara a las coordenadas virtuales de la pantalla
+    return virtualX + self.x, virtualY + self.y
+end
+
 return Camera

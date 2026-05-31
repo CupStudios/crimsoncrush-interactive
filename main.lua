@@ -74,7 +74,7 @@ end
 function love.load()
     love.math.setRandomSeed(os.time())
 
-    love.window.setTitle("CrimsonCrush - Base top-down 12:9")
+    love.window.setTitle("Crimson Crush")
     love.window.setMode(1600, 1200, {
         resizable = true,
         minwidth = 400,
@@ -89,7 +89,6 @@ function love.load()
     entityManager = EntityManager.new()
     player = entityManager:add(Player.new(0, 0))
     entityManager:add(TrainingDummy.new(320, 140))
-    entityManager:add(TrainingDummy.new(-260, -120))
 end
 
 function love.resize(width, height)
@@ -111,6 +110,19 @@ function love.keypressed(key)
         local spawnX = player.x + math.cos(angle) * distance
         local spawnY = player.y + math.sin(angle) * distance
         entityManager:add(TrainingDummy.new(spawnX, spawnY))
+    end
+end
+
+function love.mousepressed(x, y, button)
+    if button == 1 then -- 1 es el Click Izquierdo
+        -- 1. Obtenemos el mouse en resolución virtual (1600x1200)
+        local virtualMouseX, virtualMouseY = VirtualScreen:getMousePosition()
+        
+        -- 2. Lo pasamos por la cámara para saber en qué parte del mapa está
+        local worldMouseX, worldMouseY = camera:getWorldCoords(virtualMouseX, virtualMouseY)
+        
+        -- 3. Le decimos al jugador que ataque hacia ese punto exacto del mapa
+        player:m1(worldMouseX, worldMouseY)
     end
 end
 
