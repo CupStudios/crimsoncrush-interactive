@@ -34,14 +34,14 @@ local function drawVirtualUi()
     love.graphics.rectangle("fill", 24, 24, 440, 106, 10, 10)
 
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("Resolución virtual fija: 1200x900 (ratio 12:9)", 44, 44)
+    love.graphics.print("Resolución virtual fija: 1600x1200 (ratio 12:9)", 44, 44)
     love.graphics.print("Movimiento: WASD", 44, 70)
     love.graphics.print(string.format("Jugador mundo: x=%.1f y=%.1f", player.x, player.y), 44, 96)
 end
 
 function love.load()
-    love.window.setTitle("CrimsonCrush - Base top-down 12:9")
-    love.window.setMode(1200, 900, {
+    love.window.setTitle("Crimson Crush")
+    love.window.setMode(1600, 1200, {
         resizable = true,
         minwidth = 400,
         minheight = 300
