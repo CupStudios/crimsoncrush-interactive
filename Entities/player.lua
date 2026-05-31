@@ -2,6 +2,7 @@
 -- Entidad jugador: rectángulo placeholder con movimiento top-down WASD y Will RNG.
 local WillFactory = require("Wills.will_factory")
 local M1 = require("Entities.m1") -- Asegúrate de importar el nuevo módulo
+local Interpolation = require("Utils.interpolation")
 
 local Player = {}
 Player.__index = Player
@@ -39,27 +40,40 @@ function Player.new(x, y)
 end
 
 function Player:update(dt, entityManager)
-    -- Lógica de Animación y Windup del M1
+    -- Lógica de Animación, Windup e Interpolación del M1
     if (self.attackAnimTimer or 0) > 0 then
         self.attackAnimTimer = self.attackAnimTimer - dt
         
-        if self.attackAnimTimer > 0.05 then
-            -- Primeros 0.1s: Windup (Giro 30° a la izquierda)
-            self.visualRotation = -math.rad(30)
+        -- Calculamos cuánto tiempo ha pasado desde que inició el ataque (de 0 a 0.15)
+        local elapsed = 0.15 - math.max(0, self.attackAnimTimer)
+        
+        -- Alternamos la dirección en base al combo (+1 o -1)
+        local dir = self.attackDirection or 1
+        local windupAngle = math.rad(30) * dir
+        local strikeAngle = math.rad(-35) * dir -- Contrario al windup
+        
+        if elapsed <= 0.10 then
+            -- FASE 1: WINDUP (0s a 0.1s). 
+            -- Usamos 'outSine' para que el personaje gire su cuerpo frenando suavemente al final.
+            local progress = elapsed / 0.10
+            self.visualRotation = Interpolation.outSine(0, windupAngle, progress)
         else
-            -- Últimos 0.05s: Deslizamiento (Giro 35° a la derecha)
-            self.visualRotation = math.rad(35)
+            -- FASE 2: GOLPE (0.1s a 0.15s). 
+            -- Usamos 'lerp' directo porque es un latigazo rápido.
+            local progress = (elapsed - 0.10) / 0.05
+            self.visualRotation = Interpolation.lerp(windupAngle, strikeAngle, progress)
         end
         
-        -- Exactamente a los 0.15s (cuando el timer llega a 0), creamos la hitbox
+        -- Exactamente cuando el timer termina, nace la hitbox
         if self.attackAnimTimer <= 0 and self.queuedAttack then
             entityManager:add(self.queuedAttack)
             self.queuedAttack = nil
         end
     else
-        -- Si ya no está atacando (su cooldown M1 terminó), regresa a su pose normal
-        if (self.m1Timer or 0) <= 0 then
-            self.visualRotation = 0
+        -- RECOVERY SUAVE: Si no está atacando, el cuerpo regresa al centro fluidamente
+        if (self.visualRotation or 0) ~= 0 then
+            self.visualRotation = Interpolation.lerp(self.visualRotation, 0, 15 * dt)
+            if math.abs(self.visualRotation) < 0.01 then self.visualRotation = 0 end
         end
     end
 
@@ -138,6 +152,7 @@ function Player:m1(mouseX, mouseY)
 
     -- Lógica del Combo
     self.m1Combo = self.m1Combo + 1
+    self.attackDirection = (self.m1Combo % 2 == 0) and 1 or -1
     local isFinisher = (self.m1Combo == 4)
     
     -- Calculamos el cooldown del atacante
