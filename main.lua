@@ -9,6 +9,8 @@ local MobileControls = require("Utils.mobile_controls")
 local Effects = require("Utils.effects")
 local SaveManager = require("Utils.save_manager")
 
+local Updater = require("Utils.updater")
+
 function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
 function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
 function love.touchreleased(id, x, y) MobileControls:touchreleased(id) end
@@ -95,6 +97,13 @@ function love.load()
     local uiFont = love.graphics.newFont(19) -- Puedes cambiar el 16 si la quieres más grande
     uiFont:setFilter("linear", "linear")
     love.graphics.setFont(uiFont)
+    
+    -- Iniciar el gestor de versiones
+    Updater:init()
+    
+    -- URL de ejemplo apuntando a tu json de control en GitHub
+    local GITHUB_MANIFEST_URL = "https://raw.githubusercontent.com/CupStudios/crimsoncrush-interactive/main/version.json"
+    Updater:checkForUpdates(GITHUB_MANIFEST_URL)
 
     Effects:load("Data/effects.json")
 
@@ -148,6 +157,7 @@ function love.update(dt)
             Effects:emit("will_cast", player.x + player.width / 2, player.y + player.height / 2, { color = player.will.color })
         end
     end
+    Updater:update(dt)
 end
 
 function love.keypressed(key)
@@ -161,6 +171,12 @@ function love.keypressed(key)
         local spawnX = player.x + math.cos(angle) * distance
         local spawnY = player.y + math.sin(angle) * distance
         entityManager:add(TrainingDummy.new(spawnX, spawnY))
+    end
+    
+    if key == "u" and Updater.status == "update_available" then
+        Updater:startDownload()
+    elseif key == "return" and Updater.status == "ready" then
+        Updater:applyAndRestart()
     end
 end
 
@@ -201,6 +217,24 @@ function love.draw()
     drawVirtualUi()
     
     MobileControls:draw() -- Dibujar controles encima de todo
+    
+    love.graphics.setColor(1, 1, 1, 1)
+    if Updater.status == "checking" then
+        love.graphics.print("Buscando actualizaciones en GitHub...", 30, 1100)
+    elseif Updater.status == "update_available" then
+        love.graphics.print("¡Nueva versión disponible! v" .. Updater.remote_version .. " (Presiona 'U' para descargar)", 30, 1100)
+    elseif Updater.status == "downloading" then
+        love.graphics.print("Descargando actualización... ", 30, 1100)
+        -- Barra de carga simple usando tus helper functions de barras
+        -- drawBar(x, y, width, height, ratio, color, label)
+        -- (Asumiendo que drawBar está disponible en el scope o adaptándolo a love.graphics)
+    elseif Updater.status == "ready" then
+        love.graphics.setColor(0.3, 0.8, 0.3, 1)
+        love.graphics.print("Actualización lista. Presiona 'Enter' para reiniciar y aplicar.", 30, 1100)
+    elseif Updater.status == "error" then
+        love.graphics.setColor(0.9, 0.2, 0.2, 1)
+        love.graphics.print("Error de actualización: " .. Updater.error_message, 30, 1100)
+    end
 
     -- 5) Sale del sistema virtual y restaura coordenadas físicas de Löve2D.
     VirtualScreen:release()
