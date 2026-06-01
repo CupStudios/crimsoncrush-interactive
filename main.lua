@@ -5,6 +5,7 @@ local Player = require("Entities.player")
 local TrainingDummy = require("Entities.training_dummy")
 
 local MobileControls = require("Utils.mobile_controls")
+local Effects = require("Utils.effects")
 
 function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
 function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
@@ -93,6 +94,8 @@ function love.load()
     uiFont:setFilter("linear", "linear")
     love.graphics.setFont(uiFont)
 
+    Effects:load("Data/effects.json")
+
     VirtualScreen:update(love.graphics.getDimensions())
     camera = Camera.new(VirtualScreen.width, VirtualScreen.height)
 
@@ -108,6 +111,7 @@ end
 
 function love.update(dt)
     entityManager:update(dt)
+    Effects:update(dt)
     camera:follow(player, dt)
     
     -- M1 Táctil: Si presionan el botón M1, llamamos al ataque
@@ -122,13 +126,17 @@ function love.update(dt)
 
     -- Will Táctil: Si presionan el botón Will
     if MobileControls:isActionPressed("will") then
-        player:useWillAbility(entityManager)
+        if player:useWillAbility(entityManager) then
+            Effects:emit("will_cast", player.x + player.width / 2, player.y + player.height / 2, { color = player.will.color })
+        end
     end
 end
 
 function love.keypressed(key)
     if key == "space" or key == "j" then
-        player:useWillAbility(entityManager)
+        if player:useWillAbility(entityManager) then
+            Effects:emit("will_cast", player.x + player.width / 2, player.y + player.height / 2, { color = player.will.color })
+        end
     elseif key == "k" then
         local angle = love.math.random() * math.pi * 2
         local distance = love.math.random(180, 420)
@@ -168,6 +176,7 @@ function love.draw()
     drawWorldGrid()
     drawWorldMarkers()
     entityManager:draw()
+    Effects:draw()
     camera:release()
 
     -- 4) UI virtual encima del mundo, sin cámara pero manteniendo escala 12:9.

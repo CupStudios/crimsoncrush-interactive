@@ -59,7 +59,11 @@ function EntityManager:getPlayer()
 end
 
 function EntityManager:damageEntity(entity, damage, source)
-    local appliedDamage = damage
+    if not entity or entity.destroyed or not entity.hp then
+        return 0
+    end
+
+    local appliedDamage = damage or 0
 
     if entity.receiveDamage then
         appliedDamage = entity:receiveDamage(damage, source, self)
@@ -80,9 +84,13 @@ end
 function EntityManager:handleProjectileEnemyCollisions()
     for _, projectile in ipairs(self.entities) do
         if projectile.type == "projectile" and not projectile.destroyed then
-            for _, enemy in ipairs(self.entities) do
-                if enemy.type == "enemy" and not enemy.destroyed and Collision.aabb(projectile, enemy) then
-                    self:damageEntity(enemy, projectile.damage, projectile.owner)
+            for _, target in ipairs(self.entities) do
+                local owner = projectile.owner
+                local isValidTarget = target.hp and not target.destroyed and target ~= owner
+                local isFriendly = owner and target.type == owner.type
+
+                if isValidTarget and not isFriendly and Collision.aabb(projectile, target) then
+                    self:damageEntity(target, projectile.damage, owner)
                     projectile.destroyed = true
                     break
                 end
@@ -143,12 +151,16 @@ function EntityManager:handleAoeEnemyCollisions()
                 radius = aoe.radius
             }
 
-            for _, enemy in ipairs(self.entities) do
-                if enemy.type == "enemy" and not enemy.destroyed then
-                    local enemyCircle = Collision.entityCircle(enemy)
+            for _, target in ipairs(self.entities) do
+                local owner = aoe.owner
+                local isValidTarget = target.hp and not target.destroyed and target ~= owner
+                local isFriendly = owner and target.type == owner.type
 
-                    if Collision.circleCircle(aoeCircle, enemyCircle) then
-                        self:damageEntity(enemy, aoe.damage, aoe.owner)
+                if isValidTarget and not isFriendly then
+                    local targetCircle = Collision.entityCircle(target)
+
+                    if Collision.circleCircle(aoeCircle, targetCircle) then
+                        self:damageEntity(target, aoe.damage, owner)
                     end
                 end
             end
