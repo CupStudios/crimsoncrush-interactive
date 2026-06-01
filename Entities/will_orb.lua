@@ -1,5 +1,7 @@
 -- Entities/will_orb.lua
 -- Recurso del mapa que el jugador recoge por colisión AABB.
+local Effects = require("Utils.effects")
+
 local WillOrb = {}
 WillOrb.__index = WillOrb
 
@@ -31,6 +33,7 @@ function WillOrb:collect(player)
         player.willExperience = (player.willExperience or 0) + self.cantidad_energia
         player.will.lastPassiveText = string.format("Will XP +%.0f", self.cantidad_energia)
     end
+    Effects:emit("orb_consume", self.x, self.y)
 
     self.destroyed = true
 end
