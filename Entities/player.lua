@@ -3,17 +3,18 @@ local WillFactory = require("Wills.will_factory")
 local M1 = require("Entities.m1")
 local Interpolation = require("Utils.interpolation")
 local MobileControls = require("Utils.mobile_controls") -- ¡INTEGRADO!
+local Effects = require("Utils.effects")
 
 local Player = {}
 Player.__index = Player
 
-function Player.new(x, y)
+function Player.new(x, y, will)
     return setmetatable({
         id = nil, type = "player", x = x or 0, y = y or 0,
         width = 48, height = 64, speed = 280,
         hp = 100, maxHp = 100, physicalDamage = 6,
         willExperience = 0, color = {0.9, 0.15, 0.12, 1},
-        dirX = 0, dirY = 1, will = WillFactory.generate(),
+        dirX = 0, dirY = 1, will = will or WillFactory.generate(),
         isBlocking = false, stunTimer = 0, m1Timer = 0,
         m1Combo = 0, m1ComboReset = 0,
         attackAnimTimer = 0, visualRotation = 0, queuedAttack = nil,
@@ -22,12 +23,52 @@ function Player.new(x, y)
         -- Dash
         isDashing = false, dashTimer = 0,
         sideDashCooldown = 0, frontBackDashCooldown = 0,
-        dashSpeed = 2000
+        sideDashDuration = 0.15, frontBackDashDuration = 0.15,
+        dashSpeed = 2000,
+        wasDashPressed = false
     }, Player)
 end
 
+local function normalizeDirection(dx, dy, fallbackX, fallbackY)
+    local length = math.sqrt(dx * dx + dy * dy)
+
+    if length <= 0 then
+        return fallbackX or 0, fallbackY or 1, false
+    end
+
+    return dx / length, dy / length, true
+end
+
+function Player:updateCooldowns(dt)
+    self.sideDashCooldown = math.max(0, (self.sideDashCooldown or 0) - dt)
+    self.frontBackDashCooldown = math.max(0, (self.frontBackDashCooldown or 0) - dt)
+
+    if self.m1Timer > 0 then self.m1Timer = math.max(0, self.m1Timer - dt) end
+    if self.m1ComboReset > 0 then
+        self.m1ComboReset = math.max(0, self.m1ComboReset - dt)
+        if self.m1ComboReset <= 0 then self.m1Combo = 0 end
+    end
+end
+
+function Player:startDash(dx, dy, isSideDash)
+    self.kx, self.ky = dx * self.dashSpeed, dy * self.dashSpeed
+    self.isDashing = true
+    self.dashTimer = isSideDash and self.sideDashDuration or self.frontBackDashDuration
+
+    if isSideDash then
+        self.sideDashCooldown = 1.0
+    else
+        self.frontBackDashCooldown = 2.0
+    end
+
+    Effects:emit("player_dash", self.x + self.width / 2, self.y + self.height / 2, {
+        directionX = -dx,
+        directionY = -dy
+    })
+end
+
 function Player:update(dt, entityManager)
-    -- [1] Animación (Ahora delegada a la función que acabamos de crear)
+    -- [1] Animación
     self:updateAnimation(dt, entityManager)
 
     -- [2] Físicas (Knockback y Fricción)
@@ -36,56 +77,47 @@ function Player:update(dt, entityManager)
     self.kx = self.kx * 0.85
     self.ky = self.ky * 0.85
 
-    -- [3] Stun y Timers
-    if self.stunTimer > 0 then
-        self.stunTimer = self.stunTimer - dt
-        self.isBlocking = false
-        return
-    end
+    -- [3] Timers. Los cooldowns del dash se reducen siempre, incluso durante stun.
+    self:updateCooldowns(dt)
 
-    if self.m1Timer > 0 then self.m1Timer = self.m1Timer - dt end
-    if self.m1ComboReset > 0 then
-        self.m1ComboReset = self.m1ComboReset - dt
-        if self.m1ComboReset <= 0 then self.m1Combo = 0 end
+    if self.stunTimer > 0 then
+        self.stunTimer = math.max(0, self.stunTimer - dt)
+        self.isBlocking = false
+        self.wasDashPressed = love.keyboard.isDown("q") or MobileControls:isActionPressed("dash")
+        return
     end
 
     -- [4] Inputs (Mobile + Keyboard)
     local joyX, joyY = MobileControls:getJoystickVector()
-    local dx = (love.keyboard.isDown("d") and 1 or 0) - (love.keyboard.isDown("a") and 1 or 0) + joyX
-    local dy = (love.keyboard.isDown("s") and 1 or 0) - (love.keyboard.isDown("w") and 1 or 0) + joyY
-    
+    local rawDx = (love.keyboard.isDown("d") and 1 or 0) - (love.keyboard.isDown("a") and 1 or 0) + joyX
+    local rawDy = (love.keyboard.isDown("s") and 1 or 0) - (love.keyboard.isDown("w") and 1 or 0) + joyY
+    local moveDx, moveDy, isMoving = normalizeDirection(rawDx, rawDy, self.dirX, self.dirY)
+
     local dashPressed = love.keyboard.isDown("q") or MobileControls:isActionPressed("dash")
-    if dashPressed then
-        if not self.isDashing then
-            local isSide = (dx ~= 0 and dy == 0)
-            if isSide and self.sideDashCooldown <= 0 then
-                self.kx, self.ky = dx * self.dashSpeed, dy * self.dashSpeed
-                self.sideDashCooldown = 1.0
-                self.isDashing = true
-                self.dashTimer = 0.15
-            elseif not isSide and self.frontBackDashCooldown <= 0 then
-                self.kx, self.ky = dx * self.dashSpeed, dy * self.dashSpeed
-                self.frontBackDashCooldown = 2.0
-                self.isDashing = true
-                self.dashTimer = 0.15
-            end
+    local dashJustPressed = dashPressed and not self.wasDashPressed
+    self.wasDashPressed = dashPressed
+
+    if dashJustPressed and not self.isDashing then
+        local dashDx, dashDy = moveDx, moveDy
+        local isSideDash = isMoving and math.abs(rawDx) > 0 and math.abs(rawDy) <= 0.01
+
+        if isSideDash and self.sideDashCooldown <= 0 then
+            self:startDash(dashDx, dashDy, true)
+        elseif (not isSideDash) and self.frontBackDashCooldown <= 0 then
+            self:startDash(dashDx, dashDy, false)
         end
     end
 
     if self.isDashing then
         self.dashTimer = self.dashTimer - dt
         if self.dashTimer <= 0 then self.isDashing = false end
-    else
-        local isMoving = dx ~= 0 or dy ~= 0
-        if isMoving then
-            local length = math.sqrt(dx * dx + dy * dy)
-            dx, dy = dx / length, dy / length
-            self.dirX, self.dirY = dx, dy
-            
-            local currentSpeed = (love.keyboard.isDown("f") or MobileControls:isActionPressed("block")) and (self.speed * 0.4) or self.speed
-            self.x = self.x + dx * currentSpeed * dt
-            self.y = self.y + dy * currentSpeed * dt
-        end
+    elseif isMoving then
+        self.dirX, self.dirY = moveDx, moveDy
+
+        local isBlockPressed = love.keyboard.isDown("f") or MobileControls:isActionPressed("block")
+        local currentSpeed = isBlockPressed and (self.speed * 0.4) or self.speed
+        self.x = self.x + moveDx * currentSpeed * dt
+        self.y = self.y + moveDy * currentSpeed * dt
     end
 
     -- [5] Will y otros
@@ -94,7 +126,7 @@ function Player:update(dt, entityManager)
     self.will:update(dt)
     self.will:updateChanneling(self, dt, love.keyboard.isDown("e") or MobileControls:isActionPressed("charge"))
 
-    if (dx ~= 0 or dy ~= 0) then
+    if isMoving then
         self.will:onMove(self, dt)
     end
 end
@@ -153,6 +185,8 @@ function Player:m1(mouseX, mouseY)
             color = attackColor
         }
     )
+
+    Effects:emit("m1_swing", attackX, attackY, { directionX = attackDirX, directionY = attackDirY })
 
     -- En vez de spawnearlo inmediatamente, lo encolamos
     self.queuedAttack = attackInstance

@@ -20,6 +20,9 @@ function AoeBlast.new(config)
         lifetime = config.lifetime or 0.3,
         age = 0,
         hasAppliedDamage = false,
+        stunDuration = config.stunDuration or 0,
+        knockbackForce = config.knockbackForce or 0,
+        ignoreBlock = config.ignoreBlock or false,
         color = config.color or {1, 1, 1, 1}
     }, AoeBlast)
 end
