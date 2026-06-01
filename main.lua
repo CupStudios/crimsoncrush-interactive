@@ -3,9 +3,11 @@ local Camera = require("Core.camera")
 local EntityManager = require("Entities.entity_manager")
 local Player = require("Entities.player")
 local TrainingDummy = require("Entities.training_dummy")
+local WillFactory = require("Wills.will_factory")
 
 local MobileControls = require("Utils.mobile_controls")
 local Effects = require("Utils.effects")
+local SaveManager = require("Utils.save_manager")
 
 function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
 function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
@@ -100,8 +102,24 @@ function love.load()
     camera = Camera.new(VirtualScreen.width, VirtualScreen.height)
 
     entityManager = EntityManager.new()
-    player = entityManager:add(Player.new(0, 0))
+
+    local saveData = SaveManager.loadPlayer()
+    if saveData then
+        local restoredWill = WillFactory.restoreMetatable(saveData.will)
+        player = entityManager:add(Player.new(0, 0, restoredWill))
+        SaveManager.applyPlayerData(player, saveData, WillFactory.restoreMetatable)
+    else
+        player = entityManager:add(Player.new(0, 0, WillFactory.generate()))
+        SaveManager.savePlayer(player)
+    end
+
     entityManager:add(TrainingDummy.new(320, 140))
+end
+
+function love.quit()
+    if player then
+        SaveManager.savePlayer(player)
+    end
 end
 
 function love.resize(width, height)

@@ -7,28 +7,120 @@ local WillFactory = {}
 
 local ARCHETYPES = {
     {
-        name = "Bélico",
-        description = "Aumenta la fuerza a costa de eficiencia defensiva.",
-        strengthMultiplier = 1.35,
-        cooldownMultiplier = 1.08
+        id = "dominio",
+        name = "Dominio",
+        description = "Somete el espacio cercano con presión de aura: fuerte, pesado y lento.",
+        strengthMultiplier = 1.22,
+        cooldownMultiplier = 1.35,
+        color = {0.62, 0.22, 1.0, 1},
+        active = {
+            type = "aoe",
+            name = "Supresión de Aura",
+            energyCostRatio = 0.38,
+            cooldown = 4.8,
+            radius = 185,
+            lifetime = 0.38,
+            damageMultiplier = 1.35,
+            stunDuration = 1.35,
+            knockbackForce = 220
+        }
     },
     {
-        name = "Eterno",
-        description = "Reservas estables y cooldowns más largos.",
-        strengthMultiplier = 0.9,
-        cooldownMultiplier = 1.2
+        id = "supervivencia",
+        name = "Supervivencia",
+        description = "Condensa output en un impulso físico brutal: mucha fuerza y cooldown largo.",
+        strengthMultiplier = 1.75,
+        cooldownMultiplier = 1.55,
+        color = {1.0, 0.34, 0.16, 1},
+        active = {
+            type = "projectile",
+            name = "Impulso de Sobrecarga",
+            energyCostRatio = 0.46,
+            cooldown = 5.6,
+            projectileSpeed = 980,
+            lifetime = 0.16,
+            damageMultiplier = 3.9,
+            stunDuration = 0.65,
+            knockbackForce = 1050
+        }
     },
     {
-        name = "Fluido",
-        description = "Canalización ágil y cooldowns reducidos.",
-        strengthMultiplier = 1.0,
-        cooldownMultiplier = 0.82
+        id = "vectorial",
+        name = "Vectorial",
+        description = "Redirige fuerzas con control geométrico equilibrado.",
+        strengthMultiplier = 1.05,
+        cooldownMultiplier = 1.0,
+        color = {0.15, 0.82, 1.0, 1},
+        active = {
+            type = "aoe",
+            name = "Rechazo Absoluto",
+            energyCostRatio = 0.28,
+            cooldown = 3.0,
+            radius = 92,
+            lifetime = 0.24,
+            damageMultiplier = 0.65,
+            stunDuration = 0.25,
+            knockbackForce = 1850
+        }
     },
     {
-        name = "Voraz",
-        description = "Gran output ofensivo con coste energético mayor.",
-        strengthMultiplier = 1.18,
-        cooldownMultiplier = 0.95
+        id = "perceptivo",
+        name = "Perceptivo",
+        description = "Ataca huecos de atención con bajo daño y recuperación casi inmediata.",
+        strengthMultiplier = 0.82,
+        cooldownMultiplier = 0.48,
+        color = {0.88, 0.9, 1.0, 1},
+        active = {
+            type = "projectile",
+            name = "Punto Ciego",
+            energyCostRatio = 0.18,
+            cooldown = 1.25,
+            projectileSpeed = 1350,
+            lifetime = 0.34,
+            damageMultiplier = 0.38,
+            stunDuration = 1.05,
+            knockbackForce = 120,
+            invisible = true
+        }
+    },
+    {
+        id = "entropia",
+        name = "Entropía",
+        description = "Rompe el equilibrio del área con un fogonazo carísimo y devastador.",
+        strengthMultiplier = 1.5,
+        cooldownMultiplier = 1.28,
+        color = {1.0, 0.92, 0.18, 1},
+        active = {
+            type = "aoe",
+            name = "Fogonazo de Cero",
+            energyCostRatio = 0.82,
+            cooldown = 4.4,
+            radius = 132,
+            lifetime = 0.3,
+            damageMultiplier = 4.25,
+            stunDuration = 0.75,
+            knockbackForce = 520
+        }
+    },
+    {
+        id = "vacio",
+        name = "Vacío",
+        description = "Corta la distancia como si el espacio no existiera e ignora defensas.",
+        strengthMultiplier = 1.28,
+        cooldownMultiplier = 0.9,
+        color = {0.08, 0.08, 0.12, 1},
+        active = {
+            type = "projectile",
+            name = "Corte Espacial",
+            energyCostRatio = 0.42,
+            cooldown = 2.7,
+            projectileSpeed = 1900,
+            lifetime = 0.55,
+            damageMultiplier = 2.65,
+            stunDuration = 0.35,
+            knockbackForce = 420,
+            ignoreBlock = true
+        }
     }
 }
 
@@ -65,16 +157,31 @@ local PASSIVES = {
     }
 }
 
+local ARCHETYPE_BY_NAME = {}
+local PASSIVE_BY_ID = {}
+
+for _, archetype in ipairs(ARCHETYPES) do
+    ARCHETYPE_BY_NAME[archetype.name] = archetype
+    ARCHETYPE_BY_NAME[archetype.id] = archetype
+end
+
+for _, passive in ipairs(PASSIVES) do
+    PASSIVE_BY_ID[passive.id] = passive
+end
+
 local function randomFloat(min, max)
     return min + (max - min) * love.math.random()
 end
 
-local function randomColor()
+local function copyColor(color)
+    return {color[1], color[2], color[3], color[4] or 1}
+end
+
+local function clonePassive(passive)
     return {
-        love.math.random(70, 255) / 255,
-        love.math.random(70, 255) / 255,
-        love.math.random(70, 255) / 255,
-        1
+        id = passive.id,
+        name = passive.name,
+        description = passive.description
     }
 end
 
@@ -120,33 +227,45 @@ local function generateOutputMax(reserveMax)
     return math.min(output, 100000, proportionalCap)
 end
 
-local function buildActiveSkill(will)
-    local skillType = love.math.random() < 0.55 and "projectile" or "aoe"
-    local cooldown = randomFloat(1.2, 4.5) * will.cooldownMultiplier
-    local energyCost = math.max(3, math.floor(will.output_maximo * randomFloat(0.22, 0.45)))
+local function withVariation(value, percent)
+    local spread = percent or 0.08
+    return value * randomFloat(1 - spread, 1 + spread)
+end
 
-    if skillType == "projectile" then
+local function buildActiveSkill(will)
+    local archetype = ARCHETYPE_BY_NAME[will.archetype] or ARCHETYPES[1]
+    local active = archetype.active
+    local energyCost = math.max(3, math.floor(will.output_maximo * active.energyCostRatio))
+
+    if active.type == "projectile" then
         return {
             type = "projectile",
-            name = "Lanza de Will",
-            cooldown = cooldown,
+            name = active.name,
+            cooldown = withVariation(active.cooldown * will.cooldownMultiplier, 0.05),
             timer = 0,
             energyCost = energyCost,
-            projectileSpeed = randomFloat(520, 820),
-            lifetime = randomFloat(0.75, 1.35),
-            damageMultiplier = randomFloat(1.1, 2.4)
+            projectileSpeed = withVariation(active.projectileSpeed, 0.04),
+            lifetime = withVariation(active.lifetime, 0.04),
+            damageMultiplier = withVariation(active.damageMultiplier, 0.06),
+            stunDuration = active.stunDuration or 0,
+            knockbackForce = active.knockbackForce or 0,
+            invisible = active.invisible or false,
+            ignoreBlock = active.ignoreBlock or false
         }
     end
 
     return {
         type = "aoe",
-        name = "Pulso de Dominio",
-        cooldown = cooldown,
+        name = active.name,
+        cooldown = withVariation(active.cooldown * will.cooldownMultiplier, 0.05),
         timer = 0,
         energyCost = energyCost,
-        radius = randomFloat(70, 165),
-        lifetime = randomFloat(0.22, 0.42),
-        damageMultiplier = randomFloat(0.85, 1.8)
+        radius = withVariation(active.radius, 0.05),
+        lifetime = withVariation(active.lifetime, 0.05),
+        damageMultiplier = withVariation(active.damageMultiplier, 0.06),
+        stunDuration = active.stunDuration or 0,
+        knockbackForce = active.knockbackForce or 0,
+        ignoreBlock = active.ignoreBlock or false
     }
 end
 
@@ -182,14 +301,16 @@ function Will:updateChanneling(player, dt, isChanneling)
 end
 
 function Will:onMove(player, dt)
-    if self.passive.onMove then
-        self.passive.onMove(self, player, dt)
+    local passive = self.passive and PASSIVE_BY_ID[self.passive.id]
+    if passive and passive.onMove then
+        passive.onMove(self, player, dt)
     end
 end
 
 function Will:onDamageDealt(player, target, damage)
-    if self.passive.onDamageDealt then
-        self.passive.onDamageDealt(self, player, target, damage)
+    local passive = self.passive and PASSIVE_BY_ID[self.passive.id]
+    if passive and passive.onDamageDealt then
+        passive.onDamageDealt(self, player, target, damage)
     end
 end
 
@@ -223,6 +344,10 @@ function Will:tryActivate(player, entityManager)
             speed = self.active.projectileSpeed,
             damage = self.strength * self.active.damageMultiplier,
             lifetime = self.active.lifetime,
+            stunDuration = self.active.stunDuration,
+            knockbackForce = self.active.knockbackForce,
+            invisible = self.active.invisible,
+            ignoreBlock = self.active.ignoreBlock,
             color = self.color
         }))
     else
@@ -233,6 +358,9 @@ function Will:tryActivate(player, entityManager)
             radius = self.active.radius,
             damage = self.strength * self.active.damageMultiplier,
             lifetime = self.active.lifetime,
+            stunDuration = self.active.stunDuration,
+            knockbackForce = self.active.knockbackForce,
+            ignoreBlock = self.active.ignoreBlock,
             color = self.color
         }))
     end
@@ -268,6 +396,40 @@ function Will:drawAura(player)
     love.graphics.circle("line", aura.x, aura.y, aura.radius)
 end
 
+function WillFactory.restoreMetatable(willData)
+    if type(willData) ~= "table" then
+        return nil
+    end
+
+    local archetype = ARCHETYPE_BY_NAME[willData.archetype] or ARCHETYPES[1]
+    willData.archetype = archetype.name
+    willData.archetypeDescription = willData.archetypeDescription or archetype.description
+    willData.cooldownMultiplier = willData.cooldownMultiplier or archetype.cooldownMultiplier
+    willData.strength = willData.strength or math.floor(12 * archetype.strengthMultiplier)
+    willData.reserva_maxima = willData.reserva_maxima or 100
+    willData.reserva_actual = math.min(willData.reserva_actual or willData.reserva_maxima, willData.reserva_maxima)
+    willData.output_maximo = willData.output_maximo or math.max(5, math.floor(willData.reserva_maxima * 0.25))
+    willData.output_actual = math.min(willData.output_actual or 0, willData.output_maximo)
+    willData.color = willData.color or copyColor(archetype.color)
+    willData.isChanneling = false
+    willData.lastError = nil
+
+    local passive = willData.passive and PASSIVE_BY_ID[willData.passive.id] or PASSIVES[1]
+    willData.passive = clonePassive(passive)
+    willData.passivePower = willData.passivePower or randomFloat(0.04, 0.1)
+
+    setmetatable(willData, Will)
+
+    if not willData.active or willData.active.name ~= archetype.active.name then
+        willData.active = buildActiveSkill(willData)
+    else
+        willData.active.timer = willData.active.timer or 0
+        willData.active.energyCost = willData.active.energyCost or math.max(3, math.floor(willData.output_maximo * archetype.active.energyCostRatio))
+    end
+
+    return willData
+end
+
 function WillFactory.generate()
     local archetype = ARCHETYPES[love.math.random(#ARCHETYPES)]
     local reserveMax = generateReserveMax()
@@ -284,9 +446,9 @@ function WillFactory.generate()
         reserva_actual = reserveMax,
         output_maximo = outputMax,
         output_actual = 0,
-        passive = passive,
+        passive = clonePassive(passive),
         passivePower = randomFloat(0.04, 0.1),
-        color = randomColor(),
+        color = copyColor(archetype.color),
         isChanneling = false,
         lastError = nil,
         lastPassiveText = nil

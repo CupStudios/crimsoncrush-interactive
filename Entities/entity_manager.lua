@@ -5,6 +5,27 @@ local Collision = require("Utils.collision")
 local EntityManager = {}
 EntityManager.__index = EntityManager
 
+local function applyKnockback(target, source, force)
+    if not source or not force or force <= 0 then
+        return
+    end
+
+    local sourceCenterX = source.x + (source.width or 0) / 2
+    local sourceCenterY = source.y + (source.height or 0) / 2
+    local targetCenterX = target.x + (target.width or 0) / 2
+    local targetCenterY = target.y + (target.height or 0) / 2
+    local dx = targetCenterX - sourceCenterX
+    local dy = targetCenterY - sourceCenterY
+    local distance = math.sqrt(dx * dx + dy * dy)
+
+    if distance <= 0 then
+        return
+    end
+
+    target.kx = (dx / distance) * force
+    target.ky = (dy / distance) * force
+end
+
 function EntityManager.new()
     return setmetatable({
         entities = {},
@@ -66,9 +87,9 @@ function EntityManager:damageEntity(entity, damage, source)
     local appliedDamage = damage or 0
 
     if entity.receiveDamage then
-        appliedDamage = entity:receiveDamage(damage, source, self)
+        appliedDamage = entity:receiveDamage(appliedDamage, source, self)
     else
-        entity.hp = entity.hp - damage
+        entity.hp = entity.hp - appliedDamage
         if entity.hp <= 0 then
             entity.destroyed = true
         end
@@ -81,6 +102,24 @@ function EntityManager:damageEntity(entity, damage, source)
     return appliedDamage
 end
 
+
+function EntityManager:applyWillHit(target, source, effect)
+    local damage = effect.damage or 0
+
+    if target.isBlocking and not effect.ignoreBlock then
+        damage = damage * 0.25
+    end
+
+    local appliedDamage = self:damageEntity(target, damage, source)
+
+    if (effect.stunDuration or 0) > 0 then
+        target.stunTimer = math.max(target.stunTimer or 0, effect.stunDuration)
+    end
+
+    applyKnockback(target, source, effect.knockbackForce)
+    return appliedDamage
+end
+
 function EntityManager:handleProjectileEnemyCollisions()
     for _, projectile in ipairs(self.entities) do
         if projectile.type == "projectile" and not projectile.destroyed then
@@ -90,7 +129,7 @@ function EntityManager:handleProjectileEnemyCollisions()
                 local isFriendly = owner and target.type == owner.type
 
                 if isValidTarget and not isFriendly and Collision.aabb(projectile, target) then
-                    self:damageEntity(target, projectile.damage, owner)
+                    self:applyWillHit(target, owner, projectile)
                     projectile.destroyed = true
                     break
                 end
@@ -160,7 +199,7 @@ function EntityManager:handleAoeEnemyCollisions()
                     local targetCircle = Collision.entityCircle(target)
 
                     if Collision.circleCircle(aoeCircle, targetCircle) then
-                        self:damageEntity(target, aoe.damage, owner)
+                        self:applyWillHit(target, owner, aoe)
                     end
                 end
             end

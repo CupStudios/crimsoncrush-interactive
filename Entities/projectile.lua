@@ -26,6 +26,10 @@ function Projectile.new(config)
         damage = config.damage or 1,
         lifetime = config.lifetime or 1,
         age = 0,
+        stunDuration = config.stunDuration or 0,
+        knockbackForce = config.knockbackForce or 0,
+        invisible = config.invisible or false,
+        ignoreBlock = config.ignoreBlock or false,
         color = config.color or {1, 1, 1, 1}
     }, Projectile)
 end
@@ -42,6 +46,10 @@ function Projectile:update(dt)
 end
 
 function Projectile:draw()
+    if self.invisible then
+        return
+    end
+
     love.graphics.setColor(self.color[1], self.color[2], self.color[3], 0.92)
     love.graphics.circle("fill", self.x + self.width / 2, self.y + self.height / 2, self.width / 2)
 

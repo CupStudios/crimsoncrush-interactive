@@ -8,13 +8,13 @@ local Effects = require("Utils.effects")
 local Player = {}
 Player.__index = Player
 
-function Player.new(x, y)
+function Player.new(x, y, will)
     return setmetatable({
         id = nil, type = "player", x = x or 0, y = y or 0,
         width = 48, height = 48, speed = 280,
         hp = 120, maxHp = 120, physicalDamage = 6,
         willExperience = 0, color = {0.9, 0.15, 0.12, 1},
-        dirX = 0, dirY = 1, will = WillFactory.generate(),
+        dirX = 0, dirY = 1, will = will or WillFactory.generate(),
         isBlocking = false, stunTimer = 0, m1Timer = 0,
         m1Combo = 0, m1ComboReset = 0,
         attackAnimTimer = 0, visualRotation = 0, queuedAttack = nil,
