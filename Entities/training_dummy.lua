@@ -16,7 +16,7 @@ function TrainingDummy.new(x, y)
             y = y or 120,
             width = 56,
             height = 56,
-            speed = 0,
+            speed = 130,
             hp = 120,
             maxHp = 120,
             hitFlash = 0,
@@ -36,7 +36,6 @@ function TrainingDummy.new(x, y)
             m1Combo = 0, -- Conteo de golpes (0 a 3)
             m1ComboReset = 0, -- Tiempo para perder el combo
             -- IA y Máquina de Estados
-            speed = 130, -- Asegúrate de que tenga velocidad (por si estaba en 0)
             state = "neutral",
             decisionTimer = 0,
             baitTimer = 0,
@@ -50,6 +49,8 @@ function TrainingDummy.new(x, y)
             sideDashCooldown = 0,
             frontBackDashCooldown = 0,
             isDashing = false,
+            dashTimer = 0,
+            dashDuration = 0.15,
             dashSpeed = 2000
         },
         TrainingDummy
@@ -134,7 +135,16 @@ function TrainingDummy:update(dt, entityManager)
         self.flashTimer = self.flashTimer - dt
     end
     if (self.m1Timer or 0) > 0 then
-        self.m1Timer = self.m1Timer - dt
+        self.m1Timer = math.max(0, self.m1Timer - dt)
+    end
+    self.sideDashCooldown = math.max(0, (self.sideDashCooldown or 0) - dt)
+    self.frontBackDashCooldown = math.max(0, (self.frontBackDashCooldown or 0) - dt)
+
+    if self.isDashing then
+        self.dashTimer = math.max(0, (self.dashTimer or 0) - dt)
+        if self.dashTimer <= 0 then
+            self.isDashing = false
+        end
     end
 
     if self.m1ComboReset > 0 then
@@ -204,7 +214,8 @@ function TrainingDummy:update(dt, entityManager)
 
     self.decisionTimer = (self.decisionTimer or 0) - dt
     if self.decisionTimer <= 0 then
-        local roll = love.math.random() -- Un número entre 0 y
+        local roll = love.math.random() -- Un número entre 0 y 1
+        self.decisionTimer = love.math.random(80, 180) / 100
         -- Selector ponderado
         if roll < self.tendenciaNeutral then
             self.state = "neutral"
@@ -244,9 +255,13 @@ function TrainingDummy:update(dt, entityManager)
         local dx = pCenterX - myCenterX
         local dy = pCenterY - myCenterY
         local len = math.sqrt(dx*dx + dy*dy)
-        self.kx, self.ky = (dx/len) * self.dashSpeed * 1.5, (dy/len) * self.dashSpeed * 1.5
-        self.sideDashCooldown, self.frontBackDashCooldown = 1.0, 2.0
-        self.decisionTimer = 0.15
+        if len > 0 then
+            self.kx, self.ky = (dx / len) * self.dashSpeed * 1.5, (dy / len) * self.dashSpeed * 1.5
+            self.isDashing = true
+            self.dashTimer = self.dashDuration
+            self.sideDashCooldown, self.frontBackDashCooldown = 1.0, 2.0
+            self.decisionTimer = 0.15
+        end
         
     -- DASH NORMAL (Ofensivo, Neutral o Pasivo)
     elseif distance > 60 and distance < 200 and canDash then
@@ -256,15 +271,22 @@ function TrainingDummy:update(dt, entityManager)
         if love.math.random() < dashChance then
             local dx = pCenterX - myCenterX
             local dy = pCenterY - myCenterY
-            local len = math.sqrt(dx*dx + dy*dy)
-            self.kx, self.ky = (dx/len) * self.dashSpeed, (dy/len) * self.dashSpeed
-            
-            self.sideDashCooldown = 1.0
-            self.frontBackDashCooldown = 2.0
-            
-            -- ¡CRUCIAL! Si dasheamos, forzamos el estado ofensivo para que ataque
-            self.state = "ofensivo"
+            local len = math.sqrt(dx * dx + dy * dy)
+            if len > 0 then
+                self.kx, self.ky = (dx / len) * self.dashSpeed, (dy / len) * self.dashSpeed
+                self.isDashing = true
+                self.dashTimer = self.dashDuration
+                self.sideDashCooldown = 1.0
+                self.frontBackDashCooldown = 2.0
+
+                -- ¡CRUCIAL! Si dasheamos, forzamos el estado ofensivo para que ataque
+                self.state = "ofensivo"
+            end
         end
+    end
+
+    if self.isDashing then
+        return
     end
 
     if self.state == "neutral" then

@@ -1,5 +1,5 @@
 -- Entities/m1.lua
--- Entidad temporal de daño físico (M1) en área creada por el jugador al presionar la tecla Q.
+-- Entidad temporal de daño físico (M1) en área creada por ataques básicos M1.
 local M1 = {}
 M1.__index = M1
 

@@ -1,5 +1,5 @@
 -- will_factory.lua
-local Pools = require("gen")
+local Pools = require("Wills.gen")
 local WillFactory = {}
 
 function WillFactory.generarNuevoWill()

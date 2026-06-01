@@ -1,0 +1,48 @@
+{
+  "imageRoot": "Assets/images/",
+  "audioRoot": "Assets/audio/",
+  "effects": {
+    "player_dash": {
+      "visual": {
+        "shape": "ring",
+        "duration": 0.18,
+        "radius": 18,
+        "endRadius": 54,
+        "color": [0.9, 0.2, 0.16, 0.85]
+      },
+      "sound": {
+        "file": "dash.wav",
+        "volume": 0.65,
+        "pitch": 1.05
+      }
+    },
+    "m1_swing": {
+      "visual": {
+        "shape": "circle",
+        "duration": 0.12,
+        "radius": 10,
+        "endRadius": 36,
+        "color": [1, 0.9, 0.75, 0.55]
+      },
+      "sound": {
+        "file": "m1_swing.wav",
+        "volume": 0.55,
+        "pitch": 1
+      }
+    },
+    "will_cast": {
+      "visual": {
+        "shape": "ring",
+        "duration": 0.28,
+        "radius": 28,
+        "endRadius": 90,
+        "color": [0.35, 0.55, 1, 0.75]
+      },
+      "sound": {
+        "file": "will_cast.wav",
+        "volume": 0.7,
+        "pitch": 0.95
+      }
+    }
+  }
+}
