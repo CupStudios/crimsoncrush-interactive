@@ -2,6 +2,24 @@
   "imageRoot": "Assets/images/",
   "audioRoot": "Assets/audio/",
   "effects": {
+    "orb_consume":{
+      "visual": {
+        "shape": "ring",
+        "duration": 1,
+        "radius": 20,
+        "endRadius": 60,
+        "color": [0.1, 0.1, 1, 0.85]
+      }
+    },
+    "death":{
+      "visual": {
+        "shape": "ring",
+        "duration": 1,
+        "radius": 30,
+        "endRadius": 90,
+        "color": [1, 0.1, 0.25, 0.85]
+      }
+    },
     "player_dash": {
       "visual": {
         "shape": "ring",
