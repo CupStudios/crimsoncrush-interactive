@@ -1,3 +1,6 @@
+local Updater = require("Utils.updater")
+Updater:mountPendingUpdate()
+
 local VirtualScreen = require("Core.virtual_screen")
 local Camera = require("Core.camera")
 local EntityManager = require("Entities.entity_manager")
@@ -9,8 +12,6 @@ local MobileControls = require("Utils.mobile_controls")
 local Effects = require("Utils.effects")
 local SaveManager = require("Utils.save_manager")
 
-local Updater = require("Utils.updater")
-
 function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
 function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
 function love.touchreleased(id, x, y) MobileControls:touchreleased(id) end
@@ -18,6 +19,22 @@ function love.touchreleased(id, x, y) MobileControls:touchreleased(id) end
 local camera
 local entityManager
 local player
+
+local BASE_WINDOW_WIDTH = 1600
+local BASE_WINDOW_HEIGHT = 1200
+local MIN_WINDOW_WIDTH = 400
+local MIN_WINDOW_HEIGHT = 300
+local WINDOWED_DESKTOP_PADDING = 0.92
+
+local function getInitialWindowSize()
+    local desktopWidth, desktopHeight = love.window.getDesktopDimensions()
+    local maxWindowWidth = math.max(MIN_WINDOW_WIDTH, math.floor(desktopWidth * WINDOWED_DESKTOP_PADDING))
+    local maxWindowHeight = math.max(MIN_WINDOW_HEIGHT, math.floor(desktopHeight * WINDOWED_DESKTOP_PADDING))
+    local scale = math.min(1, maxWindowWidth / BASE_WINDOW_WIDTH, maxWindowHeight / BASE_WINDOW_HEIGHT)
+
+    return math.max(MIN_WINDOW_WIDTH, math.floor(BASE_WINDOW_WIDTH * scale)),
+        math.max(MIN_WINDOW_HEIGHT, math.floor(BASE_WINDOW_HEIGHT * scale))
+end
 
 local function drawWorldGrid()
     love.graphics.setColor(0.16, 0.16, 0.18, 1)
@@ -86,10 +103,13 @@ function love.load()
     love.math.setRandomSeed(os.time())
 
     love.window.setTitle("Crimson Crush")
-    love.window.setMode(1600, 1200, {
+    local windowWidth, windowHeight = getInitialWindowSize()
+    love.window.setMode(windowWidth, windowHeight, {
         resizable = true,
-        minwidth = 400,
-        minheight = 300
+        minwidth = MIN_WINDOW_WIDTH,
+        minheight = MIN_WINDOW_HEIGHT,
+        fullscreen = false,
+        fullscreentype = "desktop"
     })
 
     love.graphics.setDefaultFilter("nearest", "nearest")
@@ -223,6 +243,8 @@ function love.draw()
         love.graphics.print("Buscando actualizaciones en GitHub...", 30, 1100)
     elseif Updater.status == "update_available" then
         love.graphics.print("¡Nueva versión disponible! v" .. Updater.remote_version .. " (Presiona 'U' para descargar)", 30, 1100)
+    elseif Updater.status == "up_to_date" then
+        love.graphics.print("Juego actualizado: v" .. Updater.current_version, 30, 1100)
     elseif Updater.status == "downloading" then
         love.graphics.print("Descargando actualización... ", 30, 1100)
         -- Barra de carga simple usando tus helper functions de barras
@@ -231,6 +253,9 @@ function love.draw()
     elseif Updater.status == "ready" then
         love.graphics.setColor(0.3, 0.8, 0.3, 1)
         love.graphics.print("Actualización lista. Presiona 'Enter' para reiniciar y aplicar.", 30, 1100)
+    elseif Updater.status == "applied" then
+        love.graphics.setColor(0.3, 0.8, 0.3, 1)
+        love.graphics.print("Actualización aplicada. Reiniciando...", 30, 1100)
     elseif Updater.status == "error" then
         love.graphics.setColor(0.9, 0.2, 0.2, 1)
         love.graphics.print("Error de actualización: " .. Updater.error_message, 30, 1100)
