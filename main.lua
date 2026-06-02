@@ -19,6 +19,22 @@ local camera
 local entityManager
 local player
 
+local BASE_WINDOW_WIDTH = 1600
+local BASE_WINDOW_HEIGHT = 1200
+local MIN_WINDOW_WIDTH = 400
+local MIN_WINDOW_HEIGHT = 300
+local WINDOWED_DESKTOP_PADDING = 0.92
+
+local function getInitialWindowSize()
+    local desktopWidth, desktopHeight = love.window.getDesktopDimensions()
+    local maxWindowWidth = math.max(MIN_WINDOW_WIDTH, math.floor(desktopWidth * WINDOWED_DESKTOP_PADDING))
+    local maxWindowHeight = math.max(MIN_WINDOW_HEIGHT, math.floor(desktopHeight * WINDOWED_DESKTOP_PADDING))
+    local scale = math.min(1, maxWindowWidth / BASE_WINDOW_WIDTH, maxWindowHeight / BASE_WINDOW_HEIGHT)
+
+    return math.max(MIN_WINDOW_WIDTH, math.floor(BASE_WINDOW_WIDTH * scale)),
+        math.max(MIN_WINDOW_HEIGHT, math.floor(BASE_WINDOW_HEIGHT * scale))
+end
+
 local function drawWorldGrid()
     love.graphics.setColor(0.16, 0.16, 0.18, 1)
     for x = -3200, 3200, 100 do
@@ -86,10 +102,13 @@ function love.load()
     love.math.setRandomSeed(os.time())
 
     love.window.setTitle("Crimson Crush")
-    love.window.setMode(1600, 1200, {
+    local windowWidth, windowHeight = getInitialWindowSize()
+    love.window.setMode(windowWidth, windowHeight, {
         resizable = true,
-        minwidth = 400,
-        minheight = 300
+        minwidth = MIN_WINDOW_WIDTH,
+        minheight = MIN_WINDOW_HEIGHT,
+        fullscreen = false,
+        fullscreentype = "desktop"
     })
 
     love.graphics.setDefaultFilter("nearest", "nearest")
