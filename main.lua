@@ -1,3 +1,6 @@
+local Updater = require("Utils.updater")
+Updater:mountPendingUpdate()
+
 local VirtualScreen = require("Core.virtual_screen")
 local Camera = require("Core.camera")
 local EntityManager = require("Entities.entity_manager")
@@ -8,8 +11,6 @@ local WillFactory = require("Wills.will_factory")
 local MobileControls = require("Utils.mobile_controls")
 local Effects = require("Utils.effects")
 local SaveManager = require("Utils.save_manager")
-
-local Updater = require("Utils.updater")
 
 function love.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
 function love.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
@@ -242,6 +243,8 @@ function love.draw()
         love.graphics.print("Buscando actualizaciones en GitHub...", 30, 1100)
     elseif Updater.status == "update_available" then
         love.graphics.print("¡Nueva versión disponible! v" .. Updater.remote_version .. " (Presiona 'U' para descargar)", 30, 1100)
+    elseif Updater.status == "up_to_date" then
+        love.graphics.print("Juego actualizado: v" .. Updater.current_version, 30, 1100)
     elseif Updater.status == "downloading" then
         love.graphics.print("Descargando actualización... ", 30, 1100)
         -- Barra de carga simple usando tus helper functions de barras
@@ -250,6 +253,9 @@ function love.draw()
     elseif Updater.status == "ready" then
         love.graphics.setColor(0.3, 0.8, 0.3, 1)
         love.graphics.print("Actualización lista. Presiona 'Enter' para reiniciar y aplicar.", 30, 1100)
+    elseif Updater.status == "applied" then
+        love.graphics.setColor(0.3, 0.8, 0.3, 1)
+        love.graphics.print("Actualización aplicada. Reiniciando...", 30, 1100)
     elseif Updater.status == "error" then
         love.graphics.setColor(0.9, 0.2, 0.2, 1)
         love.graphics.print("Error de actualización: " .. Updater.error_message, 30, 1100)
