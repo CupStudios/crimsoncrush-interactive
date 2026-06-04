@@ -1,4 +1,6 @@
 {
   "version": "1.0.1",
-  "download_url": "https://raw.githubusercontent.com/CupStudios/crimsoncrush-interactive/main/Releases/game.love"
+  "download_url": "https://raw.githubusercontent.com/CupStudios/crimsoncrush-interactive/main/Releases/game.love",
+  "patch_url": "https://raw.githubusercontent.com/CupStudios/crimsoncrush-interactive/main/Releases/patch_code.love",
+  "size_bytes": 1
 }
