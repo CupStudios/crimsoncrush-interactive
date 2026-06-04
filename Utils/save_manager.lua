@@ -1,6 +1,7 @@
 -- Utils/save_manager.lua
 -- Guardado persistente de Crimson Crush usando json.lua y love.filesystem.
 local JSON = require("json")
+local ReputationManager = require("Story.reputation_manager")
 
 local SaveManager = {
     filename = "savegame.json"
@@ -36,7 +37,8 @@ function SaveManager.buildPlayerData(player)
         hp = player.hp,
         maxHp = player.maxHp,
         willExperience = player.willExperience or 0,
-        will = serializableCopy(player.will)
+        will = serializableCopy(player.will),
+        reputation = ReputationManager:serialize()
     }
 end
 

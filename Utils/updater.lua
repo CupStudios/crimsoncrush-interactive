@@ -11,8 +11,9 @@
     Expected remote manifest (version.json):
     {
       "version": "1.0.2",
-      "download_url": "https://.../patch_code.love",
-      "size_bytes": 123456
+      "download_url": "https://.../game.love",        -- legacy full package for old clients
+      "patch_url": "https://.../patch_code.love",    -- script-only package for this updater
+      "size_bytes": 123456                            -- patch_code.love size
     }
 
     Optional aliases are also accepted for compatibility:
@@ -21,8 +22,21 @@
 ]]
 local JSON = require("json")
 
-local FACTORY_VERSION = "1.0.0"
 local VERSION_FILE = "version.json"
+
+local function readBundledVersion()
+    local content = love.filesystem.read(VERSION_FILE)
+    if not content then return "1.0.0" end
+
+    local success, data = pcall(JSON.decode, JSON, content)
+    if success and data and data.version then
+        return tostring(data.version)
+    end
+
+    return "1.0.0"
+end
+
+local FACTORY_VERSION = readBundledVersion()
 local PATCH_FILE = "patch_code.love"
 local ROLLBACK_NOTICE_FILE = "rollback_notice.txt"
 local UPDATE_CHANNEL = "updater_output"
@@ -178,6 +192,9 @@ end
 local NETWORK_THREAD_CODE = [[
     local mode, url, filename, expectedSize = ...
     require("love.filesystem")
+
+    expectedSize = tonumber(expectedSize) or 0
+    if expectedSize <= 1 then expectedSize = 0 end
 
     local chan = love.thread.getChannel("updater_output")
     local max_redirects = 5
@@ -341,12 +358,12 @@ local NETWORK_THREAD_CODE = [[
                     if chunk then
                         love.filesystem.append(filename, chunk)
                         accumulatedBytes = accumulatedBytes + #chunk
-                        chan:push({ "download_progress", accumulatedBytes, expectedSize or 0 })
+                        chan:push({ "download_progress", accumulatedBytes, expectedSize })
                     end
                     return true
                 end, function(headers)
                     local contentLength = tonumber(getHeader(headers, "content-length")) or 0
-                    return { filename = filename, bytes = accumulatedBytes, size = expectedSize or contentLength }
+                    return { filename = filename, bytes = accumulatedBytes, size = expectedSize > 0 and expectedSize or contentLength }
                 end
             end)
 
@@ -357,7 +374,7 @@ local NETWORK_THREAD_CODE = [[
                 if downloadWithCommand(url, outputPath) then
                     info = love.filesystem.getInfo(filename)
                     if info then
-                        chan:push({ "download_progress", info.size or 0, expectedSize or info.size or 0 })
+                        chan:push({ "download_progress", info.size or 0, expectedSize > 0 and expectedSize or info.size or 0 })
                     end
                 end
             end
@@ -428,9 +445,6 @@ function Updater:update(dt)
                     elseif not self.download_url:match("patch_code%.love") then
                         self.status = "error"
                         self.error_message = "El manifiesto debe apuntar al parche de código patch_code.love."
-                    elseif self.size_bytes <= 0 then
-                        self.status = "error"
-                        self.error_message = "La versión remota no incluye size_bytes válido."
                     else
                         self.status = "update_available"
                     end
@@ -452,6 +466,9 @@ function Updater:update(dt)
             end
         elseif msg_type == "download_complete" then
             self.downloaded_bytes = tonumber(msg[3]) or self.downloaded_bytes
+            if self.size_bytes <= 0 then
+                self.size_bytes = self.downloaded_bytes
+            end
             if self.size_bytes > 0 and self.downloaded_bytes < self.size_bytes then
                 self.status = "error"
                 self.error_message = "La descarga quedó incompleta. Intenta de nuevo."

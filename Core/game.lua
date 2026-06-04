@@ -10,10 +10,19 @@ local WillFactory = require("Wills.will_factory")
 local MobileControls = require("Utils.mobile_controls")
 local Effects = require("Utils.effects")
 local SaveManager = require("Utils.save_manager")
+local ReputationManager = require("Story.reputation_manager")
+local DialogueBox = require("Story.dialogue_box")
+local StoryManager = require("Story.story_manager")
 
 local Game = {}
+local toVirtualPoint
 
-function Game.touchpressed(id, x, y) MobileControls:touchpressed(id, x, y) end
+function Game.touchpressed(id, x, y)
+    local virtualX, virtualY = toVirtualPoint(x, y)
+    if StoryManager:touchpressed(id, virtualX, virtualY) then return end
+    MobileControls:touchpressed(id, x, y)
+end
+
 function Game.touchmoved(id, x, y) MobileControls:touchmoved(id, x, y) end
 function Game.touchreleased(id, x, y) MobileControls:touchreleased(id) end
 
@@ -45,6 +54,10 @@ local function drawWorldGrid()
     for y = -2400, 2400, 100 do
         love.graphics.line(-3200, y, 3200, y)
     end
+end
+
+function toVirtualPoint(x, y)
+    return (x - VirtualScreen.offsetX) / VirtualScreen.scale, (y - VirtualScreen.offsetY) / VirtualScreen.scale
 end
 
 local function drawWorldMarkers()
@@ -176,6 +189,8 @@ function Game.load()
     entityManager = EntityManager.new()
 
     local saveData = SaveManager.loadPlayer()
+    ReputationManager:init(saveData and saveData.reputation)
+
     if saveData then
         local restoredWill = WillFactory.restoreMetatable(saveData.will)
         player = entityManager:add(Player.new(0, 0, restoredWill))
@@ -186,6 +201,12 @@ function Game.load()
     end
 
     entityManager:add(TrainingDummy.new(320, 140))
+    StoryManager:init({
+        entityManager = entityManager,
+        player = player,
+        saveManager = SaveManager,
+        reputationManager = ReputationManager
+    })
 end
 
 function Game.quit()
@@ -200,6 +221,14 @@ function Game.resize(width, height)
 end
 
 function Game.update(dt)
+    Updater:update(dt)
+
+    if DialogueBox:isActive() then
+        DialogueBox:update(dt)
+        return
+    end
+
+    StoryManager:update(dt, player)
     entityManager:update(dt)
     Effects:update(dt)
     camera:follow(player, dt)
@@ -220,10 +249,13 @@ function Game.update(dt)
             Effects:emit("will_cast", player.x + player.width / 2, player.y + player.height / 2, { color = player.will.color })
         end
     end
-    Updater:update(dt)
 end
 
 function Game.keypressed(key)
+    if StoryManager:keypressed(key) then
+        return
+    end
+
     if key == "space" or key == "j" then
         if player:useWillAbility(entityManager) then
             Effects:emit("will_cast", player.x + player.width / 2, player.y + player.height / 2, { color = player.will.color })
@@ -244,6 +276,11 @@ function Game.keypressed(key)
 end
 
 function Game.mousepressed(x, y, button)
+    local virtualX, virtualY = toVirtualPoint(x, y)
+    if StoryManager:mousepressed(virtualX, virtualY, button) then
+        return
+    end
+
     -- Si es móvil o estamos usando controles táctiles, ignoramos el mouse
     -- para evitar el doble registro.
     if love.system.getOS() == "Android" or love.system.getOS() == "iOS" then return end
@@ -272,6 +309,7 @@ function Game.draw()
     camera:apply()
     drawWorldGrid()
     drawWorldMarkers()
+    StoryManager:drawWorld()
     entityManager:draw()
     Effects:draw()
     camera:release()
@@ -280,6 +318,7 @@ function Game.draw()
     drawVirtualUi()
 
     MobileControls:draw() -- Dibujar controles encima de todo
+    StoryManager:drawUi()
 
     drawUpdaterStatus()
 
